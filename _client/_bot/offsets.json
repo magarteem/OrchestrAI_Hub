@@ -1,8 +1,8 @@
 {
   "_comment": "Автообновлено fetch_offsets.py из https://github.com/a2x/cs2-dumper",
   "client.dll": {
-    "dwLocalPlayerPawn": 33900448,
-    "dwViewAngles": 36955144
+    "dwLocalPlayerPawn": 33900192,
+    "dwViewAngles": 36954888
   },
   "C_BasePlayerPawn": {
     "m_vOldOrigin": 5008

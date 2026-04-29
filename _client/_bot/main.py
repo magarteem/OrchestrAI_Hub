@@ -3,11 +3,12 @@
 
 Наводка на противника включена сразу (удержание каждый кадр).
 При включённом auto_shoot — ЛКМ, когда цель в допуске по логическим px и conf (как csgobot).
-Caps Lock — пауза / возобновление.
+P — пауза / возобновление прицела; в паре с nav_demo та же клавиша ставит на паузу и навигацию.
+Caps Lock — дополнительный переключатель прицела из config (AimRuntimeConfig.activation_hotkey_scan_code).
 Ctrl+T — смена стороны (CT ↔ T).
-Q в окне предпросмотра — выход.
+Q — выход: в окне превью (OpenCV); с --no-preview — удержание Q (как nav_demo).
 
-Запуск: python main.py
+Запуск: python main.py [--team CT|T] [--aim-gain G] [--max-step-logical PX] [--no-preview]
 """
 
 from __future__ import annotations
@@ -182,10 +183,48 @@ def main() -> int:
         "--team", choices=["T", "CT"], default="CT",
         help="Враги: T (террористы) или CT (контртеррористы). По умолчанию CT.",
     )
+    parser.add_argument(
+        "--aim-gain",
+        type=float,
+        default=None,
+        metavar="G",
+        help="Перебить aim_mouse_gain из config (скорость наведения мыши, обычно 1.0–2.5)",
+    )
+    parser.add_argument(
+        "--max-step-logical",
+        type=float,
+        default=None,
+        metavar="PX",
+        help="Перебить closed_loop_max_pixel_logical (только при use_closed_loop=True)",
+    )
+    parser.add_argument(
+        "--no-preview",
+        action="store_true",
+        help="Не показывать окно OpenCV (быстрее цикл; выход — Q на клавиатуре)",
+    )
     args = parser.parse_args()
 
     weights = resolve_weights_path()
     cfg = DemoConfig(weights_path=str(weights))
+
+    if args.aim_gain is not None:
+        if args.aim_gain <= 0:
+            parser.error("--aim-gain должен быть > 0")
+        cfg.aim_runtime.aim_mouse_gain = args.aim_gain
+    if args.max_step_logical is not None:
+        if args.max_step_logical <= 0:
+            parser.error("--max-step-logical должен быть > 0")
+        cfg.aim_runtime.closed_loop_max_pixel_logical = args.max_step_logical
+    _LOG.info(
+        "Скорость прицела: aim_mouse_gain=%.3f | closed_loop=%s max_step_logical=%.1f",
+        cfg.aim_runtime.aim_mouse_gain,
+        cfg.aim_runtime.use_closed_loop,
+        cfg.aim_runtime.closed_loop_max_pixel_logical,
+    )
+
+    no_preview = args.no_preview
+    if no_preview:
+        _LOG.info("Режим --no-preview: окно OpenCV выключено")
 
     # Применяем команду из аргумента
     from config import Team as _Team
@@ -244,29 +283,37 @@ def main() -> int:
 
     keyboard.add_hotkey(cfg.aim_runtime.activation_hotkey_scan_code, _toggle_aim)
     keyboard.add_hotkey(cfg.aim_runtime.team_toggle_hotkey, _toggle_team)
+    keyboard.add_hotkey("p", _toggle_aim)
 
     _LOG.info("Веса: %s", cfg.weights_path)
     _LOG.info(
-        "Наводка: %s | auto_shoot: %s | Caps — пауза | Ctrl+T — CT/T | Q — выход",
+        "Наводка: %s | auto_shoot: %s | P — пауза прицела (+nav) | Caps — доп. | Ctrl+T — CT/T | Q — выход",
         "ВКЛ" if aim_state["on"] else "ВЫКЛ",
         "да" if cfg.aim_runtime.auto_shoot else "нет",
     )
 
-    (pv_x, pv_y), p_max_w, p_max_h = layout_preview(
-        cfg.capture_region,
-        cfg.viewer.max_display_size[0],
-        cfg.viewer.max_display_size[1],
-    )
-    _LOG.info(
-        "Предпросмотр вне зоны захвата: угол (%d, %d), макс. размер %d×%d",
-        pv_x,
-        pv_y,
-        p_max_w,
-        p_max_h,
-    )
+    pv_x = pv_y = p_max_w = p_max_h = 0
+    if not no_preview:
+        (pv_x, pv_y), p_max_w, p_max_h = layout_preview(
+            cfg.capture_region,
+            cfg.viewer.max_display_size[0],
+            cfg.viewer.max_display_size[1],
+        )
+        _LOG.info(
+            "Предпросмотр вне зоны захвата: угол (%d, %d), макс. размер %d×%d",
+            pv_x,
+            pv_y,
+            p_max_w,
+            p_max_h,
+        )
 
-    cv2.namedWindow(cfg.viewer.title, cv2.WINDOW_NORMAL)
-    cv2.moveWindow(cfg.viewer.title, pv_x, pv_y)
+        cv2.namedWindow(cfg.viewer.title, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(
+            cfg.viewer.title,
+            cfg.viewer.max_display_size[0],
+            cfg.viewer.max_display_size[1],
+        )
+        cv2.moveWindow(cfg.viewer.title, pv_x, pv_y)
 
     frame_i = 0
     last_auto_shot = 0.0
@@ -281,9 +328,12 @@ def main() -> int:
             if frame is None or frame.size == 0:
                 continue
 
-            vis = frame.copy()
-            detections = detector.detect(vis, verbose=False)
-            detector.draw_boxes(vis, detections)
+            if no_preview:
+                detections = detector.detect(frame, verbose=False)
+            else:
+                vis = frame.copy()
+                detections = detector.detect(vis, verbose=False)
+                detector.draw_boxes(vis, detections)
 
             target = None
             if aim_state["on"] and detections:
@@ -338,12 +388,13 @@ def main() -> int:
                             if now - last_auto_shot >= rt.auto_shoot_cooldown_s:
                                 mouse.click("left")
                                 last_auto_shot = now
-                    detector.draw_aim_point(
-                        vis,
-                        target.aim_x,
-                        target.aim_y,
-                        color=(0, 255, 0),
-                    )
+                    if not no_preview:
+                        detector.draw_aim_point(
+                            vis,
+                            target.aim_x,
+                            target.aim_y,
+                            color=(0, 255, 0),
+                        )
                 else:
                     mouse_acc_x = 0.0
                     mouse_acc_y = 0.0
@@ -357,22 +408,30 @@ def main() -> int:
             else:
                 _NAV_PAUSE_FLAG.unlink(missing_ok=True)
 
-            display = scale_for_display(vis, p_max_w, p_max_h)
-            dh, dw = display.shape[:2]
-            if frame_i == 0:
-                cr = cfg.capture_region
-                if _rects_overlap(pv_x, pv_y, dw, dh, cr.left, cr.top, cr.width, cr.height):
-                    _LOG.warning(
-                        "Окно предпросмотра пересекается с регионом захвата — возможны «дубликаты» "
-                        "в картинке. Перетяни окно мышью или выстави масштаб Windows 100%% для проверки.",
-                    )
-                nobj = sum(len(v) for v in detections.values())
-                _LOG.info("Первый кадр: объектов после NMS=%d (классы: %s)", nobj, list(detections))
+            if not no_preview:
+                display = scale_for_display(vis, p_max_w, p_max_h)
+                dh, dw = display.shape[:2]
+                if frame_i == 0:
+                    cr = cfg.capture_region
+                    if _rects_overlap(pv_x, pv_y, dw, dh, cr.left, cr.top, cr.width, cr.height):
+                        _LOG.warning(
+                            "Окно предпросмотра пересекается с регионом захвата — возможны «дубликаты» "
+                            "в картинке. Перетяни окно мышью или выстави масштаб Windows 100%% для проверки.",
+                        )
+                    nobj = sum(len(v) for v in detections.values())
+                    _LOG.info("Первый кадр: объектов после NMS=%d (классы: %s)", nobj, list(detections))
 
-            cv2.imshow(cfg.viewer.title, display)
+                cv2.imshow(cfg.viewer.title, display)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+            else:
+                if frame_i == 0:
+                    nobj = sum(len(v) for v in detections.values())
+                    _LOG.info("Первый кадр: объектов после NMS=%d (классы: %s)", nobj, list(detections))
+                if keyboard.is_pressed("q"):
+                    break
+
             frame_i += 1
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
     finally:
         try:
             keyboard.unhook_all()

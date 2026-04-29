@@ -71,8 +71,10 @@ class AimRuntimeConfig:
     invert_mouse_y: bool = False
     crosshair_offset_x: float = 0.0
     crosshair_offset_y: float = 0.0
-    closed_loop_max_pixel_logical: float = 56.0
-    aim_mouse_gain: float = 1.0
+    # При use_closed_loop: макс. сдвиг «логических» px к цели за один кадр (больше — быстрее догон).
+    closed_loop_max_pixel_logical: float = 96.0
+    # Множитель к dx/dy мыши после расчёта (основной рычаг «быстрее наводится»).
+    aim_mouse_gain: float = 1.35
     use_closed_loop: bool = True
     # Копит дробную часть dx/dy — прицел не «отлипает» из‑за int(); держит цель каждый кадр.
     use_subpixel_mouse_accumulator: bool = True
@@ -91,7 +93,7 @@ class ViewerConfig:
 
     # Только ASCII: иначе на Windows заголовок cv2.imshow может отображаться как \\uXXXX.
     title: str = "CS2 detection (preview)"
-    max_display_size: Tuple[int, int] = (1280, 720)
+    max_display_size: Tuple[int, int] = (1920, 1080)
 
 
 @dataclass

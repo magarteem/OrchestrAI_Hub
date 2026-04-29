@@ -38,6 +38,23 @@ _TOOL_PREFS_PATH = _REPO_ROOT / ".farm_panel_tool_prefs.json"
 _VM_ASSIGN_PATH = _REPO_ROOT / ".farm_panel_vm_assign.json"
 
 
+def _ai_aim_gain_choices() -> list[tuple[str, list[str]]]:
+    """Селектор --aim-gain: шаг 0.1 (1.0 … 3.0) + 1.35 как дефолт из config.py."""
+    base = [round(1.0 + 0.1 * i, 1) for i in range(0, 21)]
+    vals = sorted(set(base) | {1.35})
+    out: list[tuple[str, list[str]]] = []
+    for v in vals:
+        s = ("%g" % v)
+        out.append((s, ["--aim-gain", s]))
+    return out
+
+
+def _ai_aim_max_step_choices() -> list[tuple[str, list[str]]]:
+    """Селектор --max-step-logical: шаг 10; 96 (дефолт config) включён в набор."""
+    vals = sorted(set(range(40, 201, 10)) | {96})
+    return [(str(v), ["--max-step-logical", str(v)]) for v in vals]
+
+
 def _tool_prefs_load_all() -> dict:
     if not _TOOL_PREFS_PATH.is_file():
         return {"tools": {}}
@@ -441,6 +458,15 @@ class FarmPanelUI(tk.Tk):
                     [
                         ("CT", ["--team", "CT"]),
                         ("T", ["--team", "T"]),
+                    ],
+                ),
+                ("aim-gain (шаг 0.1)", _ai_aim_gain_choices()),
+                ("max-step-logical (шаг 10)", _ai_aim_max_step_choices()),
+                (
+                    "Превью OpenCV",
+                    [
+                        ("Да", []),
+                        ("Нет", ["--no-preview"]),
                     ],
                 ),
             ],
