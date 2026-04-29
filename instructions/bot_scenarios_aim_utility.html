@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CS2 Farm — Skill Model и Utility (VM Orchestrated)</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111a2c;
+        --text: #e8eefc;
+        --muted: #a9b7d6;
+        --accent: #4aa3ff;
+        --border: #223252;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #0a1020 0%, #0b1220 100%);
+        color: var(--text);
+        font: 16px/1.55 "Segoe UI", Arial, sans-serif;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 28px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      h1, h2, h3 {
+        margin: 0 0 12px;
+        line-height: 1.3;
+      }
+      h1 { font-size: 30px; color: #ffffff; }
+      h2 { font-size: 22px; color: #ffffff; }
+      h3 { font-size: 18px; color: #ffffff; }
+      p { margin: 0 0 10px; color: var(--muted); }
+      ul { margin: 8px 0 0 22px; padding: 0; }
+      li { margin: 6px 0; }
+      code {
+        background: #0c1424;
+        border: 1px solid var(--border);
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #d5e6ff;
+      }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Skill Model и Utility для VM Orchestrated</h1>
+        <p>
+          Обновленная схема для файла
+          <code>cs2_player_detection_demo/scenarios/de_poseidon_vm_runtime.json</code>.
+          Здесь описано, как применяется точность стрельбы по политике winner/loser в каждом раунде.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Ключевые блоки нового формата</h2>
+        <ul>
+          <li><code>scenario_catalog</code> — маршруты сценариев (куда идти).</li>
+          <li><code>vm_selection.plans</code> — ротация сценариев по <code>team + slot + round</code>.</li>
+          <li><code>skill_model.skill_profiles</code> — профили стрельбы/точности.</li>
+          <li><code>skill_model.winner_loser_policy</code> — правила, какой профиль дать победителю/проигрывающему.</li>
+          <li><code>skill_model.host_to_vm_fields</code> — какие поля хост обязан отправлять VM.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Профили мастерства (skill_profiles)</h2>
+        <ul>
+          <li><code>idle_no_fire</code> — почти без стрельбы.</li>
+          <li><code>lose_floor_spray</code> — низкая точность, часто в пол/мимо.</li>
+          <li><code>lose_body_low</code> — редкие попадания по телу.</li>
+          <li><code>balanced_body</code> — средний сбалансированный профиль.</li>
+          <li><code>win_precise</code> — высокая точность.</li>
+          <li><code>win_headshot_only</code> — максимальная точность, приоритет headshot.</li>
+        </ul>
+        <p>Числовой уровень задается полем <code>aim_level</code> внутри каждого профиля (0..5).</p>
+      </div>
+
+      <div class="card">
+        <h2>Как работает winner/loser policy</h2>
+        <p>
+          Хост на каждый раунд отправляет <code>planned_winner</code> (<code>T</code> или <code>CT</code>).
+          VM по этому флагу выбирает набор skill-профилей для своей стороны и слота.
+        </p>
+        <ul>
+          <li>Если должен выиграть <code>T</code>, то T получает сильные профили, CT — слабые.</li>
+          <li>Если должен выиграть <code>CT</code>, то наоборот.</li>
+          <li>Если решения нет, VM использует <code>fallback_balanced</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Что хост должен передавать на VM</h2>
+        <ul>
+          <li>На старте сессии: <code>map</code>, <code>plan_id</code>, <code>slot</code>, <code>skill_policy_id</code>.</li>
+          <li>На каждый новый раунд: <code>planned_winner</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Utility в текущей версии</h2>
+        <p>
+          В <code>de_poseidon_vm_runtime.json</code> основной акцент на маршрутах и skill-профилях.
+          Отдельный per-scenario блок <code>utility_plan</code> (как в старом формате) сейчас не выделен.
+        </p>
+        <p>
+          Если нужно, его можно добавить в каждый сценарий внутри <code>scenario_catalog</code>
+          (например <code>he_user</code> и <code>molotov_user</code>).
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Связанные документы</h2>
+        <ul>
+          <li><code>instructions/vm_orchestrator_gsi_guide.html</code> — полный цикл оркестрации.</li>
+          <li><code>instructions/vm_operator_quick_runbook.html</code> — короткий runbook оператора.</li>
+        </ul>
+        <p>
+          Назад к основной инструкции:
+          <a href="./index.html">instructions/index.html</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

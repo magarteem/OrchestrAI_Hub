@@ -1,0 +1,226 @@
+{
+  "map": "de_poseidon",
+  "version": 1,
+  "notes": "VM runtime config. Host sends map/plan_id/slot/planned_winner; VM chooses scenario locally by GSI.",
+  "scenario_catalog": {
+    "T": {
+      "rush_a": {
+        "description": "Быстрый раш правым флангом к бомбсайту",
+        "waypoints": [37, 333, 219, 80, 173, 97, 10, 15, 43],
+        "loop": false
+      },
+      "mid_control": {
+        "description": "Захват центра, затем выход на сайт",
+        "waypoints": [102, 91, 86, 134, 140, 35, 72, 38, 26, 7, 95, 180],
+        "loop": false
+      },
+      "ramp_execute": {
+        "description": "Через рампу и правый фланг к сайту",
+        "waypoints": [19, 63, 333, 153, 127, 116, 128, 83, 38, 26, 105, 125],
+        "loop": false
+      },
+      "eco_delay": {
+        "description": "Затяжка времени для имитации длинного раунда",
+        "waypoints": [37, 333, 153, 127, 116, 83, 38, 26, 35, 86, 91],
+        "loop": false
+      },
+      "bomberman": {
+        "description": "Постановка и дальний отход",
+        "waypoints": [19, 63, 333, 219, 80, 173, 97, 10, 15, 43, 15, 10, 97],
+        "loop": false
+      }
+    },
+    "CT": {
+      "anchor_a": {
+        "description": "CT1 якорит A, CT2 страхует",
+        "waypoints": [42, 50, 36, 14, 43],
+        "loop": false
+      },
+      "retake_a": {
+        "description": "Сдержанный ретейк A",
+        "waypoints": [42, 36, 14, 7, 26, 38, 43],
+        "loop": false
+      },
+      "mid_pick": {
+        "description": "Контроль центра и перехват",
+        "waypoints": [42, 54, 25, 24, 22, 31, 49],
+        "loop": false
+      }
+    }
+  },
+  "vm_selection": {
+    "round_index_mode": "cyclic",
+    "round_index_formula": "idx=(round-1)%len(slot_list)",
+    "required_vm_context": [
+      "slot",
+      "plan_id",
+      "map"
+    ],
+    "gsi_inputs": [
+      "team",
+      "round"
+    ],
+    "plans": {
+      "plan_balanced_v1": {
+        "T": {
+          "slot1": [
+            "rush_a",
+            "ramp_execute",
+            "mid_control",
+            "eco_delay",
+            "bomberman",
+            "rush_a",
+            "mid_control",
+            "ramp_execute",
+            "bomberman",
+            "rush_a"
+          ],
+          "slot2": [
+            "mid_control",
+            "rush_a",
+            "ramp_execute",
+            "eco_delay",
+            "mid_control",
+            "bomberman",
+            "rush_a",
+            "mid_control",
+            "ramp_execute",
+            "bomberman"
+          ]
+        },
+        "CT": {
+          "slot1": [
+            "anchor_a",
+            "retake_a",
+            "mid_pick",
+            "anchor_a",
+            "retake_a",
+            "mid_pick",
+            "anchor_a",
+            "retake_a",
+            "mid_pick",
+            "anchor_a"
+          ],
+          "slot2": [
+            "mid_pick",
+            "anchor_a",
+            "retake_a",
+            "mid_pick",
+            "anchor_a",
+            "retake_a",
+            "mid_pick",
+            "anchor_a",
+            "retake_a",
+            "mid_pick"
+          ]
+        }
+      },
+      "plan_fast_v1": {
+        "T": {
+          "slot1": [
+            "rush_a",
+            "rush_a",
+            "ramp_execute",
+            "mid_control",
+            "ramp_execute"
+          ],
+          "slot2": [
+            "mid_control",
+            "ramp_execute",
+            "rush_a",
+            "mid_control",
+            "bomberman"
+          ]
+        },
+        "CT": {
+          "slot1": [
+            "anchor_a",
+            "mid_pick",
+            "retake_a",
+            "anchor_a",
+            "mid_pick"
+          ],
+          "slot2": [
+            "mid_pick",
+            "retake_a",
+            "anchor_a",
+            "mid_pick",
+            "retake_a"
+          ]
+        }
+      }
+    }
+  },
+  "skill_model": {
+    "notes": "Host decides planned_winner for next round. VM applies skill profiles based on team and planned_winner.",
+    "skill_profiles": {
+      "idle_no_fire": {
+        "aim_level": 0,
+        "combat_style": "no_fire",
+        "burst_mode": "off",
+        "target_bias": "none",
+        "description": "Почти без стрельбы, приоритет движения/ожидания."
+      },
+      "lose_floor_spray": {
+        "aim_level": 1,
+        "combat_style": "floor_and_miss",
+        "burst_mode": "long_spray",
+        "target_bias": "ground",
+        "description": "Низкая точность, частые выстрелы в пол/мимо."
+      },
+      "lose_body_low": {
+        "aim_level": 2,
+        "combat_style": "body_low_conf",
+        "burst_mode": "short_spray",
+        "target_bias": "body",
+        "description": "Редкие попадания по телу, нестабильный контроль."
+      },
+      "balanced_body": {
+        "aim_level": 3,
+        "combat_style": "body_focus",
+        "burst_mode": "controlled",
+        "target_bias": "body",
+        "description": "Средняя точность и контроль."
+      },
+      "win_precise": {
+        "aim_level": 4,
+        "combat_style": "head_body_control",
+        "burst_mode": "controlled",
+        "target_bias": "head_body",
+        "description": "Высокая точность, уверенные размены."
+      },
+      "win_headshot_only": {
+        "aim_level": 5,
+        "combat_style": "headshot_only",
+        "burst_mode": "tap_burst",
+        "target_bias": "head",
+        "description": "Максимальная точность, приоритет headshot."
+      }
+    },
+    "winner_loser_policy": {
+      "when_T_should_win": {
+        "T": { "slot1": "win_headshot_only", "slot2": "win_precise" },
+        "CT": { "slot1": "lose_floor_spray", "slot2": "idle_no_fire" }
+      },
+      "when_CT_should_win": {
+        "CT": { "slot1": "win_headshot_only", "slot2": "win_precise" },
+        "T": { "slot1": "lose_floor_spray", "slot2": "idle_no_fire" }
+      },
+      "fallback_balanced": {
+        "T": { "slot1": "balanced_body", "slot2": "balanced_body" },
+        "CT": { "slot1": "balanced_body", "slot2": "balanced_body" }
+      }
+    },
+    "host_to_vm_fields": [
+      "planned_winner",
+      "skill_policy_id"
+    ],
+    "default_skill_policy_id": "winner_loser_policy"
+  },
+  "example_vm_runtime_context": {
+    "vm1": { "slot": "slot1", "plan_id": "plan_balanced_v1", "map": "de_poseidon" },
+    "vm2": { "slot": "slot2", "plan_id": "plan_balanced_v1", "map": "de_poseidon" },
+    "vm3": { "slot": "slot1", "plan_id": "plan_balanced_v1", "map": "de_poseidon" },
+    "vm4": { "slot": "slot2", "plan_id": "plan_balanced_v1", "map": "de_poseidon" }
+  }
+}

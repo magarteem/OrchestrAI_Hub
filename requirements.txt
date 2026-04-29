@@ -1,0 +1,15 @@
+# Controller (main PC) requirements
+customtkinter>=5.2.0
+requests>=2.31.0
+Pillow>=10.0.0
+
+# VM: см. папку _client/ — vm_agent.py, npm install, pip install requests
+# AutoIt: DLL в _client/autoit/lib/ (ctypes, отдельный pyautoit не обязателен)
+
+# --- How to install (Python not in PATH) ---
+# Main PC:
+#   C:\Users\M_A_G\AppData\Local\Python\bin\python.exe -m pip install customtkinter requests Pillow
+#
+# On each VM (find python.exe first):
+#   where python
+#   <python_path> -m pip install requests pyautoit

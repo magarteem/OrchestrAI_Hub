@@ -1,0 +1,68 @@
+# ===== Sensitive / Credentials =====
+logpass.txt
+config.json
+maFiles/
+*.maFile
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.bak
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+.env
+
+# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ===== Local UI state =====
+.farm_panel_tool_prefs.json
+.farm_panel_vm_assign.json
+.farm_panel_vm_players.json
+launched_accounts.json
+
+# ===== Runtime flags / local state =====
+nav_pause.flag
+_client/_bot/nav_pause.flag
+
+# ===== ML artifacts / datasets =====
+_client/_bot/dataset_tools/runs/
+_client/_bot/runs/
+_client/_bot/models/*.pt
+_client/_bot/radar_position/weights/*.pt
+_client/_bot/yolo*.pt
+
+# ===== Heavy tool/build artifacts =====
+_client/_bot/tools/*.bin
+_client/_bot/tools/*.gltf
+_client/_bot/tools/S2VCLI/
+
+# ===== Temp / duplicates =====
+*_temp.py
+*_fixed.py

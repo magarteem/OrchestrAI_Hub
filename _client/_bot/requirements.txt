@@ -1,0 +1,10 @@
+# PyTorch с GPU ставить отдельно (иначе pip подтянет другую сборку с PyPI):
+#   python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+numpy>=1.21.0
+opencv-python>=4.5.0
+ultralytics>=8.0.0
+mss>=6.1.0
+pywin32>=300
+keyboard>=0.13.5
+pymem>=1.13.0

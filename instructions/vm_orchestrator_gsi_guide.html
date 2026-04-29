@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CS2 Farm — VM Orchestrator (GSI)</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111a2c;
+        --text: #e8eefc;
+        --muted: #a9b7d6;
+        --accent: #4aa3ff;
+        --border: #223252;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #0a1020 0%, #0b1220 100%);
+        color: var(--text);
+        font: 16px/1.55 "Segoe UI", Arial, sans-serif;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 28px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      h1, h2, h3 { margin: 0 0 12px; line-height: 1.3; }
+      h1 { font-size: 30px; }
+      h2 { font-size: 22px; }
+      h3 { font-size: 18px; }
+      p { margin: 0 0 10px; color: var(--muted); }
+      ul, ol { margin: 8px 0 0 22px; padding: 0; }
+      li { margin: 6px 0; }
+      code {
+        background: #0c1424;
+        border: 1px solid var(--border);
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #d5e6ff;
+      }
+      pre {
+        margin: 10px 0 0;
+        background: #0a1324;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        overflow-x: auto;
+      }
+      .small { font-size: 14px; color: var(--muted); }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+<h1>VM Orchestrator по GSI</h1>
+<p>
+          Полный цикл: <strong>хост управляет матч-сессией</strong> через
+          <code>de_poseidon_host_orchestration.json</code>
+          (цель по счету, план, профиль),
+          а <strong>VM принимает решение по сценарию в раунде локально</strong> на основе GSI
+          (<code>team</code> + <code>round</code>) и runtime-конфига
+          <code>de_poseidon_vm_runtime.json</code>.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Полный цикл (end-to-end)</h2>
+        <ol>
+          <li>Хост запускает 2v2 сессию и получает подтверждение, что все VM в одном матче.</li>
+          <li>Хост выбирает профиль сессии: карта, <code>plan_id</code>, целевой итог (например, <code>8:8</code>).</li>
+          <li>Хост отправляет на каждую VM контекст сессии: <code>slot</code>, <code>plan_id</code>, <code>map</code>.</li>
+          <li>VM-оркестратор читает локальный GSI и определяет текущие <code>team</code> и <code>round</code>.</li>
+          <li>VM выбирает сценарий через <code>plan_id + team + slot + round</code> из JSON-плана.</li>
+          <li>Хост для каждого нового раунда решает целевого победителя (<code>T</code> или <code>CT</code>) для выхода к целевому счету.</li>
+          <li>Хост отправляет в VM <code>planned_winner</code> (и при необходимости <code>skill_policy_id</code>).</li>
+          <li>VM применяет skill-политику: стороне-победителю назначает высокий профиль, проигрывающей — низкий.</li>
+          <li>VM запускает/перезапускает <code>nav_demo.py</code> (перемещение) и <code>main.py</code> (стрельба), логирует решение и отдает статус хосту.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>1. Что отправляет хост на старте</h2>
+        <p>Хост отправляет VM контекст сессии, а не конкретный сценарий:</p>
+        <p class="small">Ниже показан пример в формате JSONC (с комментариями для чтения).</p>
+        <pre><code>{
+  "map": "de_poseidon",                 // карта матча
+  "plan_id": "plan_balanced_v1",        // id плана ротации сценариев
+  "slot": "slot1",                      // роль VM в паре (slot1|slot2)
+  "target_score": { "T": 8, "CT": 8 },  // целевой итог матча
+  "skill_policy_id": "winner_loser_policy" // политика мастерства winner/loser
+}</code></pre>
+        <p class="small">
+          <code>slot1</code>/<code>slot2</code> — постоянная роль VM в паре
+          (например VM1/VM3 = slot1, VM2/VM4 = slot2).
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>2. Откуда VM берет сценарий</h2>
+        <ol>
+          <li>VM читает GSI: <code>team</code>, <code>round</code>.</li>
+          <li>Берет список сценариев из <code>plan_id + team + slot</code>.</li>
+          <li>Считает индекс:
+            <code>idx = (round - 1) % len(slot_list)</code>.
+          </li>
+          <li>Запускает <code>nav_demo.py</code> с выбранным <code>--scenario</code> для перемещения.</li>
+          <li>Параллельно применяет профиль мастерства к <code>main.py</code> (контур стрельбы/аима).</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>2. Команды с хоста на VM</h2>
+        <p>
+          Рекомендуется отправлять не прямую команду сценария каждый раунд, а команды управления
+          сессией. VM сама выберет нужный сценарий по GSI.
+        </p>
+        <h3>1) Старт bot-сессии</h3>
+        <p class="small">Пример JSONC (с комментариями для оператора):</p>
+        <pre><code>POST /bot/session/start
+{
+  "map": "de_poseidon",                 // карта для nav_demo
+  "plan_id": "plan_balanced_v1",        // какой план из vm_orchestrated.json использовать
+  "slot": "slot1",                      // slot этой VM
+  "bot_root": "C:\\CS2_FARM\\bot",      // корень, где лежат nav_demo.py и main.py
+  "target_score": { "T": 8, "CT": 8 },  // цель по итоговому счету
+  "skill_policy_id": "winner_loser_policy" // правило выдачи skill_profile
+}</code></pre>
+        <p class="small">
+          Назначение: запустить локальный оркестратор на VM и привязать его к профилю плана.
+        </p>
+
+        <h3>2) Смена профиля в живой сессии (опционально)</h3>
+        <pre><code>POST /bot/session/update
+{
+  "plan_id": "plan_fast_v1",            // переключение ротации сценариев
+  "skill_policy_id": "winner_loser_policy" // переключение политики навыка
+}</code></pre>
+        <h3>3) Команда на целевой исход текущего раунда</h3>
+        <pre><code>POST /bot/round/target
+{
+  "round": 6,               // для какого раунда отправлено решение
+  "planned_winner": "T"     // кто должен выиграть: "T" или "CT"
+}</code></pre>
+        <p class="small">
+          Назначение: хост задает, кто должен выиграть раунд для движения к целевому счету.
+        </p>
+
+        <h3>4) Остановка bot-сессии</h3>
+        <pre><code>POST /bot/session/stop
+{}</code></pre>
+        <p class="small">
+          Назначение: остановить оркестратор и завершить запущенные процессы <code>nav_demo.py</code> и <code>main.py</code>.
+        </p>
+
+        <h3>5) Запрос текущего состояния</h3>
+        <pre><code>GET /bot/status
+
+{
+  "running": true,                          // оркестратор активен
+  "map": "de_poseidon",                     // текущая карта
+  "plan_id": "plan_balanced_v1",            // активный план
+  "slot": "slot1",                          // роль VM в текущей сессии
+  "current_team": "T",                      // сторона из GSI
+  "current_round": 4,                       // раунд из GSI
+  "current_scenario": "eco_delay",          // выбранный сценарий на этот раунд
+  "planned_winner": "T",                    // цель от хоста
+  "applied_skill_profile": "win_headshot_only", // примененный профиль стрельбы
+  "last_switch_ts": "2026-04-14T16:32:12"   // время последнего переключения
+}</code></pre>
+        <p class="small">
+          Для реальных HTTP-пакетов отправляй обычный JSON без комментариев.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>3. Как хост решает победителя раунда (для 8:8)</h2>
+        <p>Хост ведет глобальный счет и на каждом раунде пересчитывает, кому нужно отдать победу:</p>
+        <pre><code>need_t  = target_t  - current_t
+need_ct = target_ct - current_ct
+
+if need_t > need_ct:
+    planned_winner = "T"
+elif need_ct > need_t:
+    planned_winner = "CT"
+else:
+    planned_winner = alternate_or_seeded_random()</code></pre>
+        <p class="small">
+          После вычисления хост отправляет <code>POST /bot/round/target</code> на каждую VM.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>4. Минимальный псевдокод VM-решения</h2>
+        <pre><code># VM side round orchestrator
+config = load_json("scenarios/de_poseidon_vm_runtime.json")
+state = {
+    "last_round": None,
+    "last_team": None,
+    "last_scenario": None,
+    "bot_proc": None,
+}
+
+vm_slot = "slot1"
+plan_id = "plan_balanced_v1"
+map_name = "de_poseidon"
+
+while session_active:
+    gsi = read_latest_gsi()  # {"team": "T"|"CT", "round": int}
+    team = gsi.get("team")
+    rnd = gsi.get("round")
+
+    if team not in ("T", "CT") or not isinstance(rnd, int) or rnd &lt;= 0:
+        sleep(0.25)
+        continue
+
+    if rnd == state["last_round"] and team == state["last_team"]:
+        sleep(0.25)
+        continue
+
+    slot_list = config["vm_selection"]["plans"][plan_id][team][vm_slot]
+    idx = (rnd - 1) % len(slot_list)
+    scenario = slot_list[idx]
+    winner = state.get("planned_winner")  # от /bot/round/target
+
+    if winner == "T":
+        skill_profile = config["skill_model"]["winner_loser_policy"]["when_T_should_win"][team][vm_slot]
+    elif winner == "CT":
+        skill_profile = config["skill_model"]["winner_loser_policy"]["when_CT_should_win"][team][vm_slot]
+    else:
+        skill_profile = config["skill_model"]["winner_loser_policy"]["fallback_balanced"][team][vm_slot]
+
+    if scenario != state["last_scenario"]:
+        stop_process(state["nav_proc"])
+        state["nav_proc"] = start_process([
+            "python",
+            r"C:\\CS2_FARM\\bot\\nav_demo.py",
+            "--map", map_name,
+            "--team", team,
+            "--scenario", scenario,
+        ])
+        stop_process(state["aim_proc"])
+        state["aim_proc"] = start_process([
+            "python",
+            r"C:\\CS2_FARM\\bot\\main.py",
+            "--team", team,
+            # profile -> runtime config bridge (через env/config/IPC)
+        ])
+
+    state["last_round"] = rnd
+    state["last_team"] = team
+    state["last_scenario"] = scenario
+    sleep(0.25)</code></pre>
+      </div>
+
+      <div class="card">
+        <h2>5. Пример команд, которые VM запускает</h2>
+        <pre><code># 1) Перемещение (сценарий)
+python C:\CS2_FARM\bot\nav_demo.py --map de_poseidon --team T --scenario rush_a
+
+# 2) Стрельба / аим (отдельный процесс)
+python C:\CS2_FARM\bot\main.py --team T</code></pre>
+        <p>Для CT аналогично, только <code>--team CT</code>. Профиль мастерства применяется к контуру стрельбы (<code>main.py</code>), а не к <code>nav_demo.py</code>.</p>
+      </div>
+
+      <div class="card">
+        <h2>6. Практические защиты</h2>
+        <ul>
+          <li>Debounce на смену раунда: 0.5-1.0 сек.</li>
+          <li>Graceful stop старого процесса (2 сек), затем принудительный stop при необходимости.</li>
+          <li>Если GSI временно пропал — не менять сценарий, держать последний рабочий.</li>
+          <li>Если от хоста не пришел <code>planned_winner</code> — использовать <code>fallback_balanced</code>.</li>
+          <li>Логировать: <code>round</code>, <code>team</code>, <code>slot</code>, <code>scenario</code>, <code>skill_profile</code>, <code>nav_proc</code>, <code>aim_proc</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Связанные файлы</h2>
+        <ul>
+          <li><code>cs2_player_detection_demo/scenarios/de_poseidon_host_orchestration.json</code></li>
+          <li><code>cs2_player_detection_demo/scenarios/de_poseidon_vm_runtime.json</code></li>
+          <li><code>cs2_player_detection_demo/nav_demo.py</code></li>
+          <li><code>cs2_player_detection_demo/main.py</code></li>
+          <li><code>instructions/index.html</code></li>
+        </ul>
+        <p>
+          Назад к основной инструкции:
+          <a href="./index.html">instructions/index.html</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Navmesh Editor — Инструкция</title>
+  <style>
+    :root {
+      --bg:      #0f1117;
+      --bg2:     #1a1d27;
+      --bg3:     #22263a;
+      --border:  #2e3450;
+      --accent:  #4f8ef7;
+      --green:   #3ecf8e;
+      --cyan:    #00d4d4;
+      --text:    #d4d8f0;
+      --dim:     #7880a0;
+      --move:    #3ecf8e;
+      --create:  #4f8ef7;
+      --edge:    #00d4d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+      padding: 18px 18px 48px;
+    }
+
+    /* ── Шапка ── */
+    .page-wrap {
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 20px 28px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    header .icon { font-size: 42px; line-height: 1; }
+    header h1   { font-size: 30px; font-weight: 700; color: #fff; }
+    header p    { color: var(--dim); font-size: 16px; margin-top: 4px; }
+
+    /* ── Запуск ── */
+    .run-wrap {
+      margin-bottom: 16px;
+    }
+    .run-box {
+      background: #0d1020;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 15px;
+      color: #a0e0b0;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .run-box .cmt { color: var(--dim); }
+
+    /* ── Главная 3-колонная сетка ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* ── Карточка ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .card-body { padding: 14px 16px; }
+    .col-mid { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Режимы ── */
+    .modes { display: flex; flex-direction: column; gap: 9px; }
+    .mode-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      padding: 11px 13px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+    }
+    .mode-badge {
+      min-width: 42px; height: 42px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 18px; color: #000;
+      flex-shrink: 0;
+    }
+    .mode-row .desc strong { font-size: 16px; display: block; margin-bottom: 3px; }
+    .mode-row .desc span   { color: var(--dim); font-size: 14px; }
+    .bg-move   { background: var(--move); }
+    .bg-create { background: var(--create); }
+    .bg-edge   { background: var(--edge); }
+    .bg-esc    { background: #888; }
+
+    /* ── Таблица клавиш ── */
+    .keys { width: 100%; border-collapse: collapse; }
+    .keys tr + tr td { border-top: 1px solid var(--border); }
+    .keys td { padding: 9px 6px; vertical-align: middle; font-size: 16px; }
+    .keys td:first-child { width: 40%; }
+    .keys td:last-child  { color: var(--dim); }
+    kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: var(--bg3);
+      border: 1px solid #3a4060;
+      font-family: 'Cascadia Code', monospace;
+      font-size: 14px;
+      color: #e0e8ff;
+      white-space: nowrap;
+    }
+
+    /* ── Таблица мыши ── */
+    .mouse-t { width: 100%; border-collapse: collapse; }
+    .mouse-t tr + tr td { border-top: 1px solid var(--border); }
+    .mouse-t td { padding: 9px 6px; font-size: 16px; }
+    .mouse-t td:first-child { color: var(--green); font-weight: 600; white-space: nowrap; width: 44%; }
+    .mouse-t td:last-child  { color: var(--dim); }
+
+    /* ── Цвета узлов ── */
+    .node-colors { display: flex; flex-direction: column; gap: 7px; }
+    .node-row {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 16px;
+    }
+    .dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 5px rgba(255,255,255,.12);
+    }
+    .node-row .node-lbl { flex: 1; }
+    .node-row .node-tag { color: var(--dim); font-size: 14px; text-align: right; white-space: nowrap; }
+
+    /* ── Action ── */
+    .action-grid {
+      margin-top: 16px;
+    }
+    .actions { width: 100%; border-collapse: collapse; }
+    .actions tr + tr td { border-top: 1px solid var(--border); }
+    .actions td { padding: 10px 12px; font-size: 16px; vertical-align: middle; }
+    .actions td:first-child { width: 22%; }
+    .actions td:last-child  { color: var(--dim); }
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-family: 'Cascadia Code', monospace;
+      font-size: 14px; font-weight: 600;
+    }
+    .tag-none   { background: #2a2e44; color: #8090c0; }
+    .tag-jump   { background: #3a2800; color: #f0a030; }
+    .tag-crouch { background: #001840; color: #5090ff; }
+    .tag-shift  { background: #280040; color: #c060ff; }
+    .tag-look   { background: #002828; color: #00d4d4; }
+
+    /* ── Команды запуска ── */
+    .cmd-section {
+      margin-top: 16px;
+    }
+    .cmd-header {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--dim);
+      padding: 6px 4px 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 1200px) { .cmd-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px)  { .cmd-grid { grid-template-columns: 1fr; } }
+
+    .cmd-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .cmd-card-title {
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .cmd-block {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .cmd-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .cmd-label {
+      font-size: 12px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .cmd-row code {
+      display: block;
+      background: #0d1020;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 12px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 13px;
+      color: #a0e0b0;
+      word-break: break-all;
+    }
+    .cmd-params {
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .param-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 13.5px;
+    }
+    .param {
+      font-family: 'Cascadia Code', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      white-space: nowrap;
+      min-width: 130px;
+    }
+    .param-desc { color: var(--dim); }
+
+    .hotkey-block { gap: 8px; }
+    .hk-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+    }
+    .hk-row span { color: var(--dim); }
+
+    /* ── Заметка ── */
+    .note {
+      margin-top: 16px;
+      padding: 13px 18px;
+      border-radius: 10px;
+      background: #1a1f10;
+      border: 1px solid #3a5020;
+      color: #a0c870;
+      font-size: 15px;
+    }
+    .note strong { color: #c0f060; }
+
+    @media (max-width: 800px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- Шапка -->
+<header>
+  <div class="icon">🗺️</div>
+  <div>
+    <h1>Navmesh Editor</h1>
+    <p>Интерактивный редактор навигационного меша поверх радара CS2</p>
+  </div>
+</header>
+
+<!-- Запуск -->
+<div class="run-wrap">
+  <div class="run-box"><span class="cmt"># основная команда</span>
+python tools/navmesh_editor.py --map de_poseidon
+<span class="cmt"># с параметрами</span>
+python tools/navmesh_editor.py --map de_nuke --scale 3.0 --mode competitive</div>
+</div>
+
+<!-- 3 колонки -->
+<div class="main-grid">
+
+  <!-- Колонка 1: Режимы -->
+  <div class="card">
+    <div class="card-head">🔀 Режимы</div>
+    <div class="card-body">
+      <div class="modes">
+        <div class="mode-row">
+          <div class="mode-badge bg-move">M</div>
+          <div class="desc">
+            <strong>MOVE — перемещение (по умолчанию)</strong>
+            <span>Выбирать, перетаскивать и удалять существующие узлы.</span>
+          </div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-badge bg-create">C</div>
+          <div class="desc">
+            <strong>CREATE — создание узла</strong>
+            <span>ЛКМ на пустом месте — новый узел. ЛКМ на узле — выбрать его.</span>
+          </div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-badge bg-edge">G</div>
+          <div class="desc">
+            <strong>EDGE — добавить ребро</strong>
+            <span>Клик на узел A, затем клик на узел B → двустороннее ребро. Вес считается автоматически.</span>
+          </div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-badge" style="background:#ffb43c;">L</div>
+          <div class="desc">
+            <strong>LOOK — направление взгляда для A->B</strong>
+            <span>Выбери узел A, затем B. ЛКМ в пустое место задаёт look_point, клавиша A задаёт fixed_yaw.</span>
+          </div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-badge bg-esc">ESC</div>
+          <div class="desc">
+            <strong>Вернуться в MOVE</strong>
+            <span>В режимах EDGE/LOOK: первый ESC отменяет текущий выбор, следующий — переключает в MOVE.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Колонка 2: Мышь + Цвета узлов -->
+  <div class="col-mid">
+
+    <div class="card">
+      <div class="card-head">🖱️ Мышь</div>
+      <div class="card-body">
+        <table class="mouse-t">
+          <tr><td>ЛКМ на узле</td><td>Выбрать узел (MOVE / CREATE)</td></tr>
+          <tr><td>ЛКМ + тащить</td><td>Переместить узел (MOVE). Веса рёбер пересчитаются.</td></tr>
+          <tr><td>ЛКМ на пусто</td><td>Создать новый узел (CREATE)</td></tr>
+          <tr><td>ЛКМ → ЛКМ</td><td>Соединить два узла ребром (EDGE) или выбрать A->B (LOOK)</td></tr>
+          <tr><td>ЛКМ в пусто</td><td>Назначить look_point для выбранного A->B (LOOK)</td></tr>
+          <tr><td>ПКМ на узле</td><td>Удалить узел и все его рёбра — <em>в любом режиме</em></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">🎨 Цвета узлов</div>
+      <div class="card-body">
+        <div class="node-colors">
+          <div class="node-row">
+            <div class="dot" style="background:#00c850;"></div>
+            <div class="node-lbl">Обычный узел</div>
+            <div class="node-tag">action = (пусто)</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:#5050ff;"></div>
+            <div class="node-lbl">Corner (угловой)</div>
+            <div class="node-tag">corner = true</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:transparent; border:2px solid #00d4d4;"></div>
+            <div class="node-lbl">Узел A в режиме EDGE</div>
+            <div class="node-tag">ожидает пару</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:#ffff00;"></div>
+            <div class="node-lbl">Выбранный узел</div>
+            <div class="node-tag">жёлтый</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:#ffa500;"></div>
+            <div class="node-lbl">action = jump</div>
+            <div class="node-tag">оранжевый</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:#005aff;"></div>
+            <div class="node-lbl">action = crouch</div>
+            <div class="node-tag">синий</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:#c800c8;"></div>
+            <div class="node-lbl">action = shift</div>
+            <div class="node-tag">фиолетовый</div>
+          </div>
+          <div class="node-row">
+            <div class="dot" style="background:#00dcdc;"></div>
+            <div class="node-lbl">action = look_*</div>
+            <div class="node-tag">циан</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /col-mid -->
+
+  <!-- Колонка 3: Клавиши -->
+  <div class="card">
+    <div class="card-head">⌨️ Клавиши</div>
+    <div class="card-body">
+      <table class="keys">
+        <tr>
+          <td><kbd>M</kbd> / <kbd>C</kbd> / <kbd>G</kbd> / <kbd>L</kbd></td>
+          <td>Переключить режим</td>
+        </tr>
+        <tr>
+          <td><kbd>ESC</kbd></td>
+          <td>Вернуться в MOVE</td>
+        </tr>
+        <tr>
+          <td><kbd>D</kbd></td>
+          <td>Удалить выбранный (или под курсором) узел — любой режим</td>
+        </tr>
+        <tr>
+          <td><kbd>A</kbd></td>
+          <td>Назначить/сменить action; в LOOK — fixed_yaw для выбранного A->B</td>
+        </tr>
+        <tr>
+          <td><kbd>K</kbd></td>
+          <td>Удалить look-настройку для выбранного A->B (LOOK)</td>
+        </tr>
+        <tr>
+          <td><kbd>X</kbd></td>
+          <td>Удалить ребро между выбранным узлом и узлом под курсором</td>
+        </tr>
+        <tr>
+          <td><kbd>U</kbd></td>
+          <td>Undo — отменить последнее действие (до 100 шагов)</td>
+        </tr>
+        <tr>
+          <td><kbd>S</kbd></td>
+          <td>Сохранить navmesh/<em>map</em>.json</td>
+        </tr>
+        <tr>
+          <td><kbd>N</kbd></td>
+          <td>Показать / скрыть номера узлов</td>
+        </tr>
+        <tr>
+          <td><kbd>E</kbd></td>
+          <td>Показать / скрыть рёбра</td>
+        </tr>
+        <tr>
+          <td><kbd>Q</kbd></td>
+          <td>Выход (при несохранённых — нажать Q ещё раз или S)</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main-grid -->
+
+<!-- Нижний блок: Action на всю ширину -->
+<div class="action-grid">
+  <div class="card">
+    <div class="card-head">⚙️ Значения Action <span style="font-weight:400;text-transform:none;margin-left:6px;color:var(--dim)">(назначается клавишей A)</span></div>
+    <div class="card-body">
+      <table class="actions">
+        <tr>
+          <td><span class="tag tag-none">(пусто)</span></td>
+          <td>Обычное движение без дополнительных действий</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-jump">jump</span></td>
+          <td>Одиночный прыжок при достижении узла</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-crouch">crouch</span></td>
+          <td>Приседать (Ctrl зажат) до следующего узла</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-shift">shift</span></td>
+          <td>Идти тихо (Shift зажат) до следующего узла</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-look">look_north</span></td>
+          <td>Повернуть взгляд на север</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-look">look_south</span></td>
+          <td>Повернуть взгляд на юг</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-look">look_east</span></td>
+          <td>Повернуть взгляд на восток</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-look">look_west</span></td>
+          <td>Повернуть взгляд на запад</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Блок команд запуска -->
+<div class="cmd-section">
+
+  <div class="cmd-header">💻 Команды запуска</div>
+
+  <div class="cmd-grid">
+
+    <!-- Редактор -->
+    <div class="cmd-card">
+      <div class="cmd-card-title">🗺️ Редактор навмеша</div>
+      <div class="cmd-block">
+        <div class="cmd-row">
+          <span class="cmd-label">Базовый запуск</span>
+          <code>python tools/navmesh_editor.py --map de_poseidon</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Крупнее / мельче</span>
+          <code>python tools/navmesh_editor.py --map de_poseidon --scale 5.0</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Режим игры</span>
+          <code>python tools/navmesh_editor.py --map de_nuke --mode competitive</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Все параметры</span>
+          <code>python tools/navmesh_editor.py --map de_poseidon --scale 4.0 --mode wingman</code>
+        </div>
+      </div>
+      <div class="cmd-params">
+        <div class="param-row"><span class="param">--map</span><span class="param-desc">название карты (de_poseidon, de_nuke, …)</span></div>
+        <div class="param-row"><span class="param">--scale</span><span class="param-desc">масштаб окна, по умолчанию 4.0</span></div>
+        <div class="param-row"><span class="param">--mode</span><span class="param-desc">wingman (по умолч.) или competitive</span></div>
+      </div>
+    </div>
+
+    <!-- Бот -->
+    <div class="cmd-card">
+      <div class="cmd-card-title">🤖 Запуск бота (nav_demo.py)</div>
+      <div class="cmd-block">
+        <div class="cmd-row">
+          <span class="cmd-label">Просто бежать</span>
+          <code>python nav_demo.py --map de_poseidon</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Движение + взгляд (edge look)</span>
+          <code>python nav_demo.py --map de_poseidon --control-mode move+look</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Только модуль мыши</span>
+          <code>python nav_demo.py --map de_poseidon --control-mode look_only</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">К конкретному узлу</span>
+          <code>python nav_demo.py --map de_poseidon --target 42</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Чтение из памяти</span>
+          <code>python nav_demo.py --map de_poseidon --reader memory</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Запись маршрута</span>
+          <code>python nav_demo.py --map de_poseidon --record</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Запись в файл</span>
+          <code>python nav_demo.py --map de_poseidon --record --record-out my_path.json</code>
+        </div>
+      </div>
+      <div class="cmd-params">
+        <div class="param-row"><span class="param">--map</span><span class="param-desc">название карты</span></div>
+        <div class="param-row"><span class="param">--reader</span><span class="param-desc">radar (по умолч.) / memory</span></div>
+        <div class="param-row"><span class="param">--target</span><span class="param-desc">ID узла назначения (смотреть в редакторе, N)</span></div>
+        <div class="param-row"><span class="param">--record</span><span class="param-desc">включить запись waypoints</span></div>
+        <div class="param-row"><span class="param">--record-out</span><span class="param-desc">путь для сохранения waypoints (JSON)</span></div>
+        <div class="param-row"><span class="param">--record-dedup</span><span class="param-desc">мин. расстояние между точками (по умолч. 32)</span></div>
+        <div class="param-row"><span class="param">--control-mode</span><span class="param-desc">move+look (по умолч.) или look_only</span></div>
+      </div>
+    </div>
+
+    <!-- Инструменты -->
+    <div class="cmd-card">
+      <div class="cmd-card-title">🔧 Вспомогательные инструменты</div>
+      <div class="cmd-block">
+        <div class="cmd-row">
+          <span class="cmd-label">Калибровка радара</span>
+          <code>python -m radar_position.calibration.calibrator --map de_poseidon --mode wingman</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Сбор датасета</span>
+          <code>python -m dataset_tools.collector --map de_poseidon --mode wingman</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Обучение YOLO</span>
+          <code>python -m dataset_tools.trainer --map de_poseidon</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Отладка HSV</span>
+          <code>python radar_position/debug_hsv.py --map de_poseidon --mode wingman</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Генерация navmesh</span>
+          <code>python tools/navmesh_from_gltf.py --gltf tools/de_poseidon_out.gltf --map de_poseidon --min-dist 120</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Оверлей navmesh</span>
+          <code>python tools/navmesh_overlay.py --map de_poseidon</code>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-label">Тест координат</span>
+          <code>python test_radar_pos.py --map de_poseidon</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Горячие клавиши бота -->
+    <div class="cmd-card">
+      <div class="cmd-card-title">⌨️ Горячие клавиши бота (nav_demo.py)</div>
+      <div class="cmd-block hotkey-block">
+        <div class="hk-row"><kbd>P</kbd><span>Пауза / возобновление движения</span></div>
+        <div class="hk-row"><kbd>Пробел</kbd><span>Удерживать 2 с — выбрать случайный узел как новую цель</span></div>
+        <div class="hk-row"><kbd>R</kbd><span>Включить / выключить запись waypoints</span></div>
+        <div class="hk-row"><kbd>Q</kbd><span>Выход</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="note">
+  <strong>Совет:</strong> 
+  Перед выходом всегда нажимай <kbd style="background:#222;border-color:#555;color:#ccc">S</kbd> для сохранения.
+  При несохранённых изменениях в статусной строке появляется символ <strong>*</strong>.
+  Undo работает до <strong>100 шагов</strong> назад.
+</div>
+
+</div><!-- /page-wrap -->
+</body>
+</html>

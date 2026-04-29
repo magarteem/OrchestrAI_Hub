@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CS2 Farm — Быстрый Runbook оператора</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111a2c;
+        --text: #e8eefc;
+        --muted: #a9b7d6;
+        --accent: #4aa3ff;
+        --ok: #63d191;
+        --warn: #ffcc66;
+        --bad: #ff7f7f;
+        --border: #223252;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #0a1020 0%, #0b1220 100%);
+        color: var(--text);
+        font: 15px/1.5 "Segoe UI", Arial, sans-serif;
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 20px auto;
+        padding: 0 14px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .full { grid-column: 1 / -1; }
+      h1, h2, h3 { margin: 0 0 8px; line-height: 1.25; }
+      h1 { font-size: 24px; }
+      h2 { font-size: 18px; }
+      h3 { font-size: 15px; color: #ffffff; }
+      p { margin: 0 0 8px; color: var(--muted); }
+      ul, ol { margin: 6px 0 0 18px; padding: 0; }
+      li { margin: 4px 0; }
+      code {
+        background: #0d1526;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1px 5px;
+        color: #d8e7ff;
+      }
+      .mono {
+        margin-top: 8px;
+        background: #0a1324;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        font-family: Consolas, "Courier New", monospace;
+      }
+      .tag {
+        display: inline-block;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 9px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+      }
+      .ok { background: rgba(99, 209, 145, 0.18); color: var(--ok); border: 1px solid rgba(99, 209, 145, 0.45); }
+      .warn { background: rgba(255, 204, 102, 0.18); color: var(--warn); border: 1px solid rgba(255, 204, 102, 0.45); }
+      .bad { background: rgba(255, 127, 127, 0.18); color: var(--bad); border: 1px solid rgba(255, 127, 127, 0.45); }
+      .accent { color: var(--accent); }
+      @media (max-width: 900px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card full">
+        <h1>CS2 Farm — Быстрый runbook оператора</h1>
+        <p>Короткая версия запуска: от оркестрации с хоста до выбора сценария на VM.</p>
+        <span class="tag ok">Режим: 2x2</span>
+        <span class="tag warn">Цель: управляемый исход (например 8:8)</span>
+        <span class="tag bad">Без псевдокода, только действия</span>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>0) Перед стартом</h2>
+          <ul>
+            <li>Все 4 VM онлайн, <code>vm_agent.py</code> запущен.</li>
+            <li>Проверка: <code>http://IP_VM:9999/status</code> отвечает.</li>
+            <li>На VM активен GSI (team/round обновляются).</li>
+            <li>Подготовлен план: <code>plan_id</code>, карта, целевой счет.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2>1) Старт фермы с хоста</h2>
+          <ol>
+            <li>Нажать <code>Запустить 2v2</code>.</li>
+            <li>После загрузки CS2 нажать <code>Старт Лобби</code>.</li>
+            <li>Убедиться, что у всех VM общий <code>match_id</code>.</li>
+          </ol>
+        </div>
+
+        <div class="card full">
+          <h2>2) Команды, которые отправляет хост на VM</h2>
+          <h3>2.1 Старт bot-сессии (на каждую VM)</h3>
+          <div class="mono">POST /bot/session/start
+{
+  "map": "de_poseidon",
+  "plan_id": "plan_balanced_v1",
+  "slot": "slot1|slot2",
+  "target_score": { "T": 8, "CT": 8 },
+  "skill_policy_id": "winner_loser_policy",
+  "bot_root": "C:\\CS2_FARM\\bot"
+}</div>
+          <h3>2.2 На каждый новый раунд</h3>
+          <div class="mono">POST /bot/round/target
+{
+  "round": 6,
+  "planned_winner": "T"
+}</div>
+          <h3>2.3 При необходимости</h3>
+          <div class="mono">POST /bot/session/update   // смена plan_id/политики
+POST /bot/session/stop     // остановка bot-сессии
+GET  /bot/status           // контроль текущего состояния</div>
+        </div>
+
+        <div class="card">
+          <h2>3) Что делает VM в раунде</h2>
+          <ul>
+            <li>Читает GSI: <code>team</code> + <code>round</code>.</li>
+            <li>Выбирает сценарий по: <code>plan_id + team + slot + round</code>.</li>
+            <li>Применяет skill-профиль по <code>planned_winner</code>:
+              <ul>
+                <li>победитель — точнее/агрессивнее;</li>
+                <li>проигрывающий — мимо/в пол/минимальный урон.</li>
+              </ul>
+            </li>
+            <li>Запускает/перезапускает <code>nav_demo.py</code> (перемещение).</li>
+            <li>Отдельно запускает/перезапускает <code>main.py</code> (стрельба/аим).</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2>4) Как хост решает победителя раунда</h2>
+          <ul>
+            <li>Хост ведет глобальный счет <code>T:CT</code>.</li>
+            <li>Считает сколько побед еще нужно каждой стороне до цели.</li>
+            <li>Отправляет <code>planned_winner</code> той стороне, которой нужнее победа.</li>
+            <li>При равенстве — чередование или seeded-random.</li>
+          </ul>
+          <p class="accent">Цель: прийти к нужному итогу (например 8:8) без рассинхрона.</p>
+        </div>
+
+        <div class="card full">
+          <h2>5) Контроль в процессе (чек-лист оператора)</h2>
+          <ul>
+            <li>У всех VM одинаковый <code>match_id</code>.</li>
+            <li>В <code>/bot/status</code> видны: <code>current_team</code>, <code>current_round</code>, <code>current_scenario</code>, <code>applied_skill_profile</code>.</li>
+            <li>Сценарий реально меняется при смене раунда.</li>
+            <li>Нет рассинхрона по раунду между VM.</li>
+          </ul>
+        </div>
+
+        <div class="card full">
+          <h2>6) Быстрые действия при сбоях</h2>
+          <ul>
+            <li><strong>GSI пропал:</strong> VM держит последний сценарий; оператор проверяет cfg и локальный GSI endpoint.</li>
+            <li><strong>Не тот раунд/сценарий:</strong> отправить <code>/bot/session/update</code>, затем актуальный <code>/bot/round/target</code>.</li>
+            <li><strong>Процесс бота завис:</strong> <code>/bot/session/stop</code> → <code>/bot/session/start</code>.</li>
+            <li><strong>Нет planned_winner:</strong> VM должна уйти в <code>fallback_balanced</code>.</li>
+          </ul>
+        </div>
+
+        <div class="card full">
+          <h2>Связанные документы</h2>
+          <ul>
+            <li><code>instructions/vm_orchestrator_gsi_guide.html</code> — полная техническая версия.</li>
+            <li><code>cs2_player_detection_demo/scenarios/de_poseidon_host_orchestration.json</code> — профиль оркестрации хоста.</li>
+            <li><code>cs2_player_detection_demo/scenarios/de_poseidon_vm_runtime.json</code> — план сценариев и skill-политика на VM.</li>
+            <li><code>instructions/index.html</code> — основной гайд по ферме.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

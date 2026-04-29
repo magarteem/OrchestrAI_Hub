@@ -1,0 +1,81 @@
+{
+  "map": "de_poseidon",
+  "version": 1,
+  "notes": "Host-side orchestration config. VM runtime data is stored separately in de_poseidon_vm_runtime.json.",
+  "session_profiles": {
+    "wingman_balanced_10": {
+      "description": "Базовый 10-раундовый профиль для 2x2 с чередованием темпа",
+      "rounds_expected": 10,
+      "default_plan_id": "plan_balanced_v1",
+      "default_skill_policy_id": "winner_loser_policy"
+    },
+    "wingman_fast_10": {
+      "description": "Более быстрый профиль, меньше eco-затяжек",
+      "rounds_expected": 10,
+      "default_plan_id": "plan_fast_v1",
+      "default_skill_policy_id": "winner_loser_policy"
+    }
+  },
+  "target_score_profiles": {
+    "draw_8_8": {
+      "T": 8,
+      "CT": 8
+    }
+  },
+  "winner_decision_policy": {
+    "id": "need_based",
+    "description": "На каждый раунд выбирать победителя, которому больше нужно побед до целевого счета.",
+    "formula": [
+      "need_t  = target_t  - current_t",
+      "need_ct = target_ct - current_ct",
+      "if need_t > need_ct -> planned_winner = T",
+      "if need_ct > need_t -> planned_winner = CT",
+      "else -> alternate_or_seeded_random"
+    ]
+  },
+  "commands_to_vm": {
+    "session_start": {
+      "method": "POST",
+      "path": "/bot/session/start",
+      "payload_fields": [
+        "map",
+        "plan_id",
+        "slot",
+        "bot_root",
+        "target_score",
+        "skill_policy_id"
+      ]
+    },
+    "session_update": {
+      "method": "POST",
+      "path": "/bot/session/update",
+      "payload_fields": [
+        "plan_id",
+        "skill_policy_id"
+      ]
+    },
+    "round_target": {
+      "method": "POST",
+      "path": "/bot/round/target",
+      "payload_fields": [
+        "round",
+        "planned_winner"
+      ]
+    },
+    "session_stop": {
+      "method": "POST",
+      "path": "/bot/session/stop",
+      "payload_fields": []
+    },
+    "status": {
+      "method": "GET",
+      "path": "/bot/status"
+    }
+  },
+  "slot_mapping_example": {
+    "vm1": "slot1",
+    "vm2": "slot2",
+    "vm3": "slot1",
+    "vm4": "slot2"
+  }
+}

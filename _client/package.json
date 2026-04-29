@@ -1,0 +1,15 @@
+{
+  "name": "cs2-farm-vm-client",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js-скрипты для vm_agent на VM (скопируйте всю папку _client)",
+  "scripts": {
+    "login": "node cs2_login.js",
+    "lobby": "node cs2_lobby.js"
+  },
+  "dependencies": {
+    "steam-totp": "^2.1.2",
+    "steam-user": "^4.29.2",
+    "steamcommunity": "^3.45.2"
+  }
+}
