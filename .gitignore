@@ -52,6 +52,7 @@ nav_pause.flag
 _client/_bot/nav_pause.flag
 
 # ===== ML artifacts / datasets =====
+_client/_bot/dataset_tools/dataset/
 _client/_bot/dataset_tools/runs/
 _client/_bot/runs/
 _client/_bot/models/*.pt
